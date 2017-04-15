@@ -2,11 +2,11 @@
  * Specify the working enviroment
  */
 var Envirement = {
-                    Dovelopment : "Dovelopment",
+                    Development : "Development",
                     Staging : "Staging",
                     Production : "Production"
                 }
-var workingEnviroment = Envirement.Dovelopment;
+var workingEnviroment = Envirement.Development;
 
 (function autoStart(){
     var formsToValidate = document.querySelectorAll("form[data-validateForm]");
@@ -704,7 +704,7 @@ function removeError(field) {
 function showInternalError(errMessage){
     
     switch (workingEnviroment) {
-        case Envirement.Dovelopment:
+        case Envirement.Development:
             alert(errMessage);
             break;
         case Envirement.Staging:
