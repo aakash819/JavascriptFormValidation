@@ -13,6 +13,7 @@ var workingEnviroment = Envirement.Development;
     var formsToValidateCount = formsToValidate.length;
     if(formsToValidateCount > 0){
         for(var i = 0;i < formsToValidateCount; i++){
+            formsToValidate[i].setAttribute("novalidate","novalidate");
             validationSetup(formsToValidate[i]);
         }
     }
@@ -29,27 +30,20 @@ function validationSetup(form){
         showInternalError("Expected a form element");
         return;
     }
-    
+    var formValidationFailed = new Event('onValidationFaild');
+    var formValidationSuccess =new Event("onValidationSuccess");
 
     form.addEventListener("submit", function(event){
         if(!validateForm(form)){
+            form.dispatchEvent(formValidationFailed);
             event.preventDefault();
         }
-    });
-
-    var fieldsToValidate = form.querySelectorAll("[data-validate]");;
-    if (fieldsToValidate.length > 0) {
-        var fieldLength = fieldsToValidate.length;
-        for(var i = 0; i < fieldLength; i++){
-            fieldsToValidate[i].addEventListener("input",function(){
-                validateField(this);
-            });
+        else{
+            form.dispatchEvent(formValidationSuccess);
         }
-    }
-
+    });
+    return form;
 }
-
-
 /**
 *Validate a html form
 *@param {object} [form] html form object
@@ -75,14 +69,11 @@ function validateForm(form) {
 *@return {void}  
 */
 function validateField(field) {
-    var dataSet = field.dataset;
-    
-
-    if (field == undefined || field == null) {
-        console.error("field is null, can't be validated");
+    if(!isFormControl(field)){
         return;
     }
 
+    var dataSet = field.dataset;
     var errMsg;
     var fieldTag = field.tagName.toLowerCase();
 
@@ -232,7 +223,7 @@ function validateField(field) {
                 }
                 break;
             default:
-                console.error("unrecognized form field");
+                showInternalError("unrecognized form field");
                 console.log(field);
                 break;
         }
@@ -561,9 +552,17 @@ function validateField(field) {
                 case "regexp":
 
                     break;
-
+                case "url":
+                    errMsg = errMsg == "" ? "Invalid url" : errMsg;
+                    if(isUrl(field.value)){
+                        removeError(field);
+                    }
+                    else{
+                        addError(field,errMsg);
+                    }
+                    break;
                 default:
-                    console.error("invalid data type")
+                    console.error("invalid data type");
                     break;
             }
         }
@@ -572,6 +571,26 @@ function validateField(field) {
 
 }
 
+/**
+ * returns true if argument is a form control
+ * @param {formControl} field 
+ * @return {bool}
+ */
+function isFormControl(field){
+    if (field == undefined || field == null) {
+        showInternalError("field is null or undefined can't be validated");
+        return false;
+
+    }
+    var validTagNames = ['input', 'select', 'textarea'];
+
+    if(validTagNames.indexOf(field.tagName.toLowerCase()) < 0){
+        showInternalError("Only input controls is expected");
+        return false;
+    }
+    
+    return true;
+}
 /**
 *Returns true if input string is interger number otherwise false
 *@param {string} [inputValue] Input field value
@@ -663,14 +682,26 @@ function isAlphaNumericWithSpace(inputValue) {
 /**
 *Returns true if input string is alphanumeric without spaces otherwise false
 *@param {string} [inputValue] Input field value
-*@return {boolean}  
+*@return {boolean}
 */
 function isAlphaNumericWithOutSpace(inputValue) {
     var rgx = /^[a-zA-Z0-9]+$/;
     return (rgx.test(inputValue));
 }
-
-
+/**
+ *Returns true if input string is valid url otherwise false
+ * @param {string} inputValue 
+ * @return {bool}
+ */
+function isUrl(inputValue){
+    var expression = /[-a-zA-Z0-9@:%_\+.~#?&//=]{2,256}\.[a-z]{2,4}\b(\/[-a-zA-Z0-9@:%_\+.~#?&//=]*)?/gi;
+    var regex = new RegExp(expression);
+    if (inputValue.match(regex)) {
+        return true;
+    } else {
+        return false;
+    }
+}
 
 /**
 *Make a field invalid by adding an error
@@ -697,6 +728,7 @@ function removeError(field) {
     targetErrElement.style.display = "none";
 }
 
+
 /**
  * Show runtime error depands upon working enviroment
  * @param {string} errMessage 
@@ -705,15 +737,14 @@ function showInternalError(errMessage){
     
     switch (workingEnviroment) {
         case Envirement.Development:
-            alert(errMessage);
+            alert("Runtime Developmet Error : " + errMessage);
             break;
         case Envirement.Staging:
-            alert(errMessage);
+            console.error("Runtime Staging Error : " + errMessage);
             break;
         case Envirement.Production:
             console.warn(errMessage);
             break;
-    
         default:
             break;
     }
