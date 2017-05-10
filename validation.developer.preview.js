@@ -1,22 +1,24 @@
 /**
  * Specify the working enviroment
  */
-var Envirement = {
-                    Development : "Development",
-                    Staging : "Staging",
-                    Production : "Production"
-                }
-var workingEnviroment = Envirement.Development;
+var vpEnvirement = {
+    Development: 0,
+    Staging: 1,
+    Production: 2
+}
+var vpWorkingEnviroment = vpEnvirement.Development;
 
-(function autoStart(){
+(function autoStart() {
     var formsToValidate = document.querySelectorAll("form[data-validateForm]");
+
     var formsToValidateCount = formsToValidate.length;
-    if(formsToValidateCount > 0){
-        for(var i = 0;i < formsToValidateCount; i++){
-            formsToValidate[i].setAttribute("novalidate","novalidate");
+    if (formsToValidateCount > 0) {
+        for (var i = 0; i < formsToValidateCount; i++) {
+            formsToValidate[i].setAttribute("novalidate", "novalidate");
             validationSetup(formsToValidate[i]);
         }
     }
+
 }());
 
 
@@ -25,23 +27,59 @@ var workingEnviroment = Envirement.Development;
 *@param {object} [form] html form object
 *@return {object}  
 */
-function validationSetup(form){
-    if(form == null || form == undefined){
+function validationSetup(form) {
+    if (form == null || form == undefined) {
         showInternalError("Expected a form element");
         return;
     }
+    form.setAttribute("novalidate", "novalidate");
+    var fieldsToValidate = form.querySelectorAll("[data-validate]");;
     var formValidationFailed = new Event('onValidationFaild');
-    var formValidationSuccess =new Event("onValidationSuccess");
+    var formValidationSuccess = new Event("onValidationSuccess");
 
-    form.addEventListener("submit", function(event){
-        if(!validateForm(form)){
-            form.dispatchEvent(formValidationFailed);
+    form.addEventListener("submit", function (event) {
+        if (!validateForm(form, fieldsToValidate)) {
             event.preventDefault();
+            form.dispatchEvent(formValidationFailed);
         }
-        else{
+        else {
+            event.preventDefault();
             form.dispatchEvent(formValidationSuccess);
         }
     });
+
+    if (fieldsToValidate.length > 0) {
+        var fieldLength = fieldsToValidate.length;
+        for (var i = 0; i < fieldLength; i++) {
+            fieldsToValidate[i].addEventListener("change", function () {
+                validateField(this);
+            });
+
+            if (fieldsToValidate[i].dataset.hasOwnProperty("type")) {
+                if (fieldsToValidate[i].dataset.type == "tel") {
+                    fieldsToValidate[i].addEventListener("keydown", function (eve) {
+                        var keyCode = eve.keyCode;
+                        var validKeyCode = [8, 9, 13, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105]
+                        if (validKeyCode.indexOf(keyCode) < 0) {
+                            eve.preventDefault();
+                        }
+                    });
+                }
+            }
+
+
+        }
+    }
+
+    form.clearValidation = function () {
+        if (fieldsToValidate.length > 0) {
+            var fieldLength = fieldsToValidate.length;
+            for (var i = 0; i < fieldLength; i++) {
+                removeError(fieldsToValidate[i]);
+            }
+        }
+    };
+
     return form;
 }
 /**
@@ -49,12 +87,10 @@ function validationSetup(form){
 *@param {object} [form] html form object
 *@return {bool}
 */
-function validateForm(form) {
-    
-    var fieldsToValidate = form.querySelectorAll("[data-validate]");
+function validateForm(form, fieldsToValidate) {
     var fieldCount = fieldsToValidate.length;
     if (fieldCount > 0) {
-        for (var index = 0; index < fieldCount; index++){
+        for (var index = 0; index < fieldCount; index++) {
             validateField(fieldsToValidate[index]);
         }
     }
@@ -69,7 +105,7 @@ function validateForm(form) {
 *@return {void}  
 */
 function validateField(field) {
-    if(!isFormControl(field)){
+    if (!isFormControl(field)) {
         return;
     }
 
@@ -79,7 +115,7 @@ function validateField(field) {
 
     //if required
     if (dataSet.hasOwnProperty("required")) {
-        var errMessage = dataSet.required; 
+        var errMessage = dataSet.required;
         errMsg = (errMessage.length > 0) ? errMessage : "This field is required";
 
         switch (fieldTag) {
@@ -119,7 +155,7 @@ function validateField(field) {
                 else if (inputType == "checkbox") {
                     var parentForm = field.form;
                     var checkedCheckBox = parentForm.querySelectorAll("input[name=" + field.name + "]:checked").length;
-                    var minChecked = dataSet.hasOwnProperty("min") ? parseInt(dataSet.min , 10) : 1;
+                    var minChecked = dataSet.hasOwnProperty("min") ? parseInt(dataSet.min, 10) : 1;
                     var maxChecked = dataSet.hasOwnProperty("max") ? parseInt(dataSet.max, 10) : parentForm.querySelectorAll("input[name=" + field.name + "]").length;
 
                     if (checkedCheckBox == 0) {
@@ -161,6 +197,25 @@ function validateField(field) {
                 }
                 else if (inputType == "file") {
                     if (field.files.length > 0) {
+
+                        var upFileName = field.files[0].name;
+                        var upFileExtension = upFileName.substring(upFileName.lastIndexOf('.') + 1).toLowerCase();
+                        if (dataSet.hasOwnProperty("filetype")) {
+                            var fileType = dataSet.filetype;
+                            var fileObj = getCustomErrMsg(fileType);
+                            fileTypeArr = fileObj['key'].split("|");
+                            if (fileObj['value']) {
+                                errMsg = fileObj['value'];
+                            }
+                            else {
+                                errMsg = "Please upload a file with " + fileTypeArr.toString() + " extension";
+                            }
+                            if (fileTypeArr.indexOf(upFileExtension) < 0) {
+                                addError(field, errMsg);
+                                return;
+                            }
+                        }
+
                         var fileMin = parseInt(dataSet.min, 10);
                         var fileMax = parseInt(dataSet.max, 10);
                         var minSize = (fileMin > 0) ? fileMin : null;
@@ -228,7 +283,7 @@ function validateField(field) {
                 break;
         }
     }
-    else{
+    else {
         removeError(field);
     }
 
@@ -254,7 +309,7 @@ function validateField(field) {
                 case "int":
                     errMsg = (errMsg == "") ? "Please enter integer number" : errMsg;
                     if (isInt(field.value)) {
-                        
+
                         var intMax = dataSet.hasOwnProperty("max") ? (parseInt(dataSet.max, 10) !== NaN ? parseInt(dataSet.max, 10) : null) : null;
                         var intMin = dataSet.hasOwnProperty("min") ? (parseInt(dataSet.min, 10) !== NaN ? parseInt(dataSet.min, 10) : null) : null;
                         var intCurrent = parseInt(field.value, 10) != null ? parseInt(field.value, 10) : null;
@@ -554,11 +609,11 @@ function validateField(field) {
                     break;
                 case "url":
                     errMsg = errMsg == "" ? "Invalid url" : errMsg;
-                    if(isUrl(field.value)){
+                    if (isUrl(field.value)) {
                         removeError(field);
                     }
-                    else{
-                        addError(field,errMsg);
+                    else {
+                        addError(field, errMsg);
                     }
                     break;
                 default:
@@ -569,6 +624,52 @@ function validateField(field) {
 
     }
 
+    if (dataSet.hasOwnProperty("compare")) {
+        var compareObj = getCustomErrMsg(dataSet.compare);
+        var dataVal1 = field.value;
+        var dataVal2 = document.getElementById(compareObj.key).value;
+        if (compareData(dataVal1, dataVal2)) {
+            removeError(field);
+            return;
+        }
+        else {
+            if (compareObj.value) {
+                errMsg = compareObj.value;
+            }
+            else {
+                errMsg = "Value does not match";
+            }
+            addError(field, errMsg);
+            return;
+        }
+    }
+
+}
+
+function compareData(Data1, Data2) {
+    return (Data1 === Data2);
+}
+
+/**
+ * return a object with custom err msg and data attribute 
+ * @param {string} attrKey 
+ * @return {object}
+ */
+function getCustomErrMsg(attrKey) {
+    var msgObj = {
+        key: "",
+        value: ""
+    };
+    if (attrKey.indexOf(";") > -1) {
+        var tempArr = attrKey.split(';');
+        msgObj["key"] = tempArr[0];
+        msgObj["value"] = tempArr[1];
+    }
+    else {
+        msgObj["key"] = attrKey;
+        msgObj["value"] = "";
+    }
+    return msgObj;
 }
 
 /**
@@ -576,7 +677,7 @@ function validateField(field) {
  * @param {formControl} field 
  * @return {bool}
  */
-function isFormControl(field){
+function isFormControl(field) {
     if (field == undefined || field == null) {
         showInternalError("field is null or undefined can't be validated");
         return false;
@@ -584,11 +685,11 @@ function isFormControl(field){
     }
     var validTagNames = ['input', 'select', 'textarea'];
 
-    if(validTagNames.indexOf(field.tagName.toLowerCase()) < 0){
+    if (validTagNames.indexOf(field.tagName.toLowerCase()) < 0) {
         showInternalError("Only input controls is expected");
         return false;
     }
-    
+
     return true;
 }
 /**
@@ -693,7 +794,12 @@ function isAlphaNumericWithOutSpace(inputValue) {
  * @param {string} inputValue 
  * @return {bool}
  */
-function isUrl(inputValue){
+function isUrl(inputValue) {
+
+    if (isEmail(inputValue)) {
+        return false;
+    }
+
     var expression = /[-a-zA-Z0-9@:%_\+.~#?&//=]{2,256}\.[a-z]{2,4}\b(\/[-a-zA-Z0-9@:%_\+.~#?&//=]*)?/gi;
     var regex = new RegExp(expression);
     if (inputValue.match(regex)) {
@@ -733,17 +839,17 @@ function removeError(field) {
  * Show runtime error depands upon working enviroment
  * @param {string} errMessage 
  */
-function showInternalError(errMessage){
-    
-    switch (workingEnviroment) {
-        case Envirement.Development:
+function showInternalError(errMessage) {
+
+    switch (vpWorkingEnviroment) {
+        case vpEnvirement.Development:
             alert("Runtime Developmet Error : " + errMessage);
             break;
-        case Envirement.Staging:
+        case vpEnvirement.Staging:
             console.error("Runtime Staging Error : " + errMessage);
             break;
-        case Envirement.Production:
-            console.warn(errMessage);
+        case vpEnvirement.Production:
+            console.warn("Errorin application, switching to development mode may show you more detail about this error");
             break;
         default:
             break;
