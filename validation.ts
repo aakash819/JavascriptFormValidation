@@ -48,15 +48,15 @@ export namespace JSVALIDATION {
                     });
 
                     if (this.FieldsToValidate[i].dataset.hasOwnProperty("type")) {
-                        if (this.FieldsToValidate[i].dataset.type == "tel") {
-                            this.FieldsToValidate[i].addEventListener("keydown", function (eve: KeyboardEvent) {
-                                let keyCode: number = eve.keyCode;
-                                let validKeyCode = [8, 9, 13, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105]
-                                if (validKeyCode.indexOf(keyCode) < 0) {
-                                    eve.preventDefault();
-                                }
-                            });
-                        }
+//                         if (this.FieldsToValidate[i].dataset.type == "tel") {
+//                             this.FieldsToValidate[i].addEventListener("keydown", function (eve: KeyboardEvent) {
+//                                 let keyCode: number = eve.keyCode;
+//                                 let validKeyCode = [8, 9, 13, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105]
+//                                 if (validKeyCode.indexOf(keyCode) < 0) {
+//                                     eve.preventDefault();
+//                                 }
+//                             });
+//                         }
                     }
                 }
             }
