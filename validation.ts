@@ -14,7 +14,7 @@ export namespace JSVALIDATION {
     export class FormValidation {
 
         public Form: HTMLFormElement;
-        private FieldsToValidate: NodeListOf<HTMLInputElement & HTMLSelectElement & HTMLTextAreaElement>;
+        private FieldsToValidate: NodeListOf<HTMLInputElement & HTMLSelectElement & HTMLTextAreaElement> | null = null;
 
         constructor(form: HTMLFormElement) {
             this.Form = form;
